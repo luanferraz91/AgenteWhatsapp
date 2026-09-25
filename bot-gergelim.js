@@ -1,44 +1,32 @@
-// Adicione no topo
-const QRCode = require('qrcode')
-// ... dentro do iniciar(), troque a parte do qr por:
-let lastQR = null
-sock.ev.on('connection.update', ({ qr }) => {
-  if (qr) { 
-    lastQR = qr
-    qrcode.generate(qr, { small: true }) 
-  }
-})
-app.get("/qr", async (req,res) => {
-  if(!lastQR) return res.send("Aguardando QR... dá um Manual Deploy no Render")
-  const qrImg = await QRCode.toDataURL(lastQR)
-  res.send(`<img src="${qrImg}" style="width:300px"><br>Escaneie com WhatsApp > Aparelhos Conectados`)
-})
-app.get("/", (req,res) => {
-  res.send(`<h1>GERGELIM online</h1><a href="/qr">VER QR CODE AQUI</a>`)
-})
-
 const { default: makeWASocket, useMultiFileAuthState } = require("@whiskeysockets/baileys")
 const qrcode = require("qrcode-terminal")
+const QRCode = require("qrcode")
 const cron = require("node-cron")
 const fs = require("fs")
 const express = require("express")
 
 const app = express()
 const PORT = process.env.PORT || 10000
-app.get("/", (req,res) => res.send("Bot GERGELIM online ✅"))
+let lastQR = null
+
+app.get("/qr", async (req,res) => {
+  if(!lastQR) return res.send("<h1>Aguardando QR... clica em Manual Deploy no Render e atualiza essa página em 10s</h1>")
+  const qrImg = await QRCode.toDataURL(lastQR)
+  res.send(`<div style="text-align:center;font-family:sans-serif"><h2>Escaneie com seu WhatsApp</h2><img src="${qrImg}" style="width:320px"><p>WhatsApp > Aparelhos conectados > Conectar</p></div>`)
+})
+app.get("/", (req,res) => res.send(`<h1>GERGELIM online ✅</h1><a href="/qr" style="font-size:20px">CLIQUE AQUI PRA VER O QR CODE</a>`))
 app.listen(PORT, '0.0.0.0', () => console.log("Servidor online na porta " + PORT))
 
 const NOME_GRUPO = "GERGELIM"
 const ARQUIVO = "./agenda-gergelim.json"
 
-// Cria arquivo se não existir
 if (!fs.existsSync(ARQUIVO)) {
   fs.writeFileSync(ARQUIVO, JSON.stringify([
     { data: "29/09/2026 16:15", titulo: "Análise presencial" },
     { data: "01/10/2026 11:45", titulo: "Osteopata" },
     { data: "07/10/2026 13:10", titulo: "Cinema Verity" },
     { data: "08/10/2026 12:00", titulo: "Riane avaliação diástase" }
-  ]))
+  ], null, 2))
 }
 
 function calcularDias(dataStr) {
@@ -59,7 +47,11 @@ async function iniciar() {
   sock.ev.on('creds.update', saveCreds)
   
   sock.ev.on('connection.update', ({ connection, qr }) => {
-    if (qr) qrcode.generate(qr, { small: true })
+    if (qr) {
+      lastQR = qr
+      qrcode.generate(qr, { small: true })
+      console.log("QR gerado! Abra /qr")
+    }
     if (connection === 'open') console.log("✅ GERGELIM conectado 24h!")
   })
 
@@ -67,15 +59,15 @@ async function iniciar() {
     try {
       const grupos = await sock.groupFetchAllParticipating()
       const grupo = Object.values(grupos).find(g => g.subject === NOME_GRUPO)
-      if (!grupo) return
-      const agenda = JSON.parse(fs.readFileSync(ARQUIVO))
+      if (!grupo) return console.log("Grupo GERGELIM não achado")
+      const agenda = JSON.parse(fs.readFileSync(ARQUIVO, "utf8"))
       for (let item of agenda) {
         const dias = calcularDias(item.data)
         if (dias <= 5 && dias >= 0) {
           let msg = `*GERGELIM - Agenda do Davi* 👶\n\n`
           if (dias > 1) msg += `⏳ Faltam ${dias} dias para: *${item.titulo}*\n📅 ${item.data}`
-          else if (dias === 1) msg += `🚨 É AMANHÃ: *${item.titulo}*\n📅 ${item.data}`
-          else msg += `🔔 *É HOJE!!!* *${item.titulo}* às ${item.data.split(" ")[1]}`
+          else if (dias === 1) msg += `🚨 É AMANHÃ: *${item.titulo}*\n📅 ${item.data} - Não esqueçam!`
+          else msg += `🔔 *É HOJE!!!* *${item.titulo}* às ${item.data.split(" ")[1]}\nBoa atividade! 💛`
           await sock.sendMessage(grupo.id, { text: msg })
         }
       }
