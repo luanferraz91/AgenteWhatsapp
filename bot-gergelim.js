@@ -1,3 +1,22 @@
+// Adicione no topo
+const QRCode = require('qrcode')
+// ... dentro do iniciar(), troque a parte do qr por:
+let lastQR = null
+sock.ev.on('connection.update', ({ qr }) => {
+  if (qr) { 
+    lastQR = qr
+    qrcode.generate(qr, { small: true }) 
+  }
+})
+app.get("/qr", async (req,res) => {
+  if(!lastQR) return res.send("Aguardando QR... dá um Manual Deploy no Render")
+  const qrImg = await QRCode.toDataURL(lastQR)
+  res.send(`<img src="${qrImg}" style="width:300px"><br>Escaneie com WhatsApp > Aparelhos Conectados`)
+})
+app.get("/", (req,res) => {
+  res.send(`<h1>GERGELIM online</h1><a href="/qr">VER QR CODE AQUI</a>`)
+})
+
 const { default: makeWASocket, useMultiFileAuthState } = require("@whiskeysockets/baileys")
 const qrcode = require("qrcode-terminal")
 const cron = require("node-cron")
