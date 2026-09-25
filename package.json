@@ -1,0 +1,10 @@
+{
+  "name": "bot-gergelim",
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.0",
+    "qrcode-terminal": "^0.12.0",
+    "node-cron": "^3.0.3",
+    "express": "^4.18.2"
+  },
+  "scripts": { "start": "node bot-gergelim.js" }
+}
